@@ -1,6 +1,6 @@
 r"""
 ================================================================================
-WAKE CLAUDE - Voice + Clap Activated Browser Launcher
+WAKE CLAUDE - Voice Activated Browser Launcher
 ================================================================================
 
 HOW TO SET UP AND RUN THIS SCRIPT
@@ -21,14 +21,10 @@ STEP 2 — Install Required Libraries
 -------------------------------------
 Open Command Prompt and run these commands one at a time:
 
-    pip install vosk
-    pip install numpy
+    py -m pip install vosk pyaudio
 
-For PyAudio on Windows, try this first:
-    pip install pyaudio
-
-If that fails with a build error, use pipwin as a fallback:
-    pip install pipwin
+If pyaudio fails on Windows, use pipwin as a fallback:
+    py -m pip install pipwin
     pipwin install pyaudio
 
 STEP 3 — Download the Vosk Speech Recognition Model
@@ -41,27 +37,26 @@ STEP 3 — Download the Vosk Speech Recognition Model
 
    Your folder should look like this:
        wake_claude.py
-       vosk-model-small-en-us-0.15/
-           am/
-           conf/
-           graph/
+       vosk-model-small-en-us-0.15\
+           am\
+           conf\
+           graph\
            ...
 
 STEP 4 — Run the Script
 ------------------------
 In Command Prompt, navigate to the folder containing this script:
-    cd C:\path\to\your\folder
+    cd C:\Users\YourName\Desktop\wakeupclaude
 
 Then run:
-    python wake_claude.py
+    py wake_claude.py
 
 STEP 5 — Use It
 ----------------
 1. The script will print "Listening for 'wake up'..."
 2. Say "wake up" clearly into your microphone.
-3. You'll hear a beep — then clap your hands once within 5 seconds.
-4. Claude.ai will open in your default browser!
-5. There's a 5-second cooldown before it listens again.
+3. Claude.ai opens immediately in your default browser!
+4. There's a 5-second cooldown before it listens again.
 
 To stop the script: press Ctrl+C in the Command Prompt window.
 
@@ -78,15 +73,9 @@ TROUBLESHOOTING
         vosk-model-small-en-us-0.15
     Also ensure no other app is hogging the microphone (Discord, Teams, etc.).
 
-- "Clap not detected — try lowering CLAP_THRESHOLD":
-    Find the line near the top of this file that says:
-        CLAP_THRESHOLD = 3000
-    Lower it (e.g. 1500 or 1000) if your claps aren't being detected.
-    Raise it (e.g. 5000 or 8000) if background noise is triggering false claps.
-    Clap sharply once, fairly close to the microphone, for best results.
-
 - PyAudio install fails:
     Use the pipwin method described in Step 2 above.
+    Always install with:  py -m pip install  (not just pip install)
 
 ================================================================================
 """
@@ -95,29 +84,18 @@ import os
 import sys
 import time
 import json
-import wave
-import struct
 import webbrowser
 
-import numpy as np
 import pyaudio
 import winsound
 from vosk import Model, KaldiRecognizer
 
 # ==============================================================================
-# CONFIGURATION — Adjust these values to tune sensitivity
+# CONFIGURATION
 # ==============================================================================
 
-# How loud a sound must be to count as a clap.
-# The audio amplitude is measured 0–32767. A clap is a short, sharp spike.
-# Try LOWERING this value (e.g. 1500 or 1000) if claps aren't being detected.
-# Try RAISING this value (e.g. 5000 or 8000) if background noise triggers it.
-CLAP_THRESHOLD = 3000
-
-# How many seconds to listen for a clap after the wake word is detected.
-CLAP_LISTEN_SECONDS = 5
-
 # How many seconds to wait after opening Claude before listening again.
+# Prevents it from opening multiple tabs if it catches the phrase twice.
 COOLDOWN_SECONDS = 5
 
 # How many seconds to wait before retrying if the microphone disconnects.
@@ -236,64 +214,6 @@ def listen_for_wake_word(stream, recognizer):
             if "wake up" in text:
                 return True
 
-        else:
-            # Partial result — the recognizer is still processing a phrase.
-            # We can check partial results to print live feedback (optional).
-            partial = json.loads(recognizer.PartialResult())
-            partial_text = partial.get("partial", "").lower()
-
-            # Only print partials that have content, to avoid spamming the console.
-            if partial_text and partial_text != "the":
-                # Uncomment the line below if you want to see live partial results:
-                # print(f"  (partial): {partial_text}", end="\r")
-                pass
-
-
-# ==============================================================================
-# CLAP DETECTION
-# ==============================================================================
-
-def listen_for_clap(stream):
-    """
-    Listen for a loud, short audio spike (clap) for up to CLAP_LISTEN_SECONDS.
-    Returns True if a clap is detected, False if time runs out or mic fails.
-
-    How it works:
-      Audio is made up of numbers (amplitudes). Normal room noise is low.
-      A clap produces a sudden, large spike in amplitude. We measure the
-      maximum amplitude in each small chunk and compare it to CLAP_THRESHOLD.
-    """
-    print(f"  Listening for a clap for {CLAP_LISTEN_SECONDS} seconds...")
-    deadline = time.time() + CLAP_LISTEN_SECONDS
-
-    while time.time() < deadline:
-        data = read_audio_chunk(stream)
-
-        if data is None:
-            # Mic error — tell caller to reconnect
-            return None  # None signals a mic error, False signals timeout
-
-        # Convert the raw bytes into a numpy array of 16-bit integers.
-        # Each integer is one audio sample; negative values are fine (it's a wave).
-        samples = np.frombuffer(data, dtype=np.int16)
-
-        # Find the loudest sample in this chunk (absolute value = volume).
-        peak_amplitude = int(np.max(np.abs(samples)))
-
-        # Show a simple volume meter so the user can see it's working.
-        bar_length = min(40, peak_amplitude // 400)
-        bar = "#" * bar_length
-        seconds_left = max(0, deadline - time.time())
-        print(f"  Volume: [{bar:<40}] {peak_amplitude:5d}  ({seconds_left:.1f}s left)", end="\r")
-
-        # If the peak is louder than our threshold, it's probably a clap!
-        if peak_amplitude > CLAP_THRESHOLD:
-            print()  # Move to next line after the volume meter
-            return True
-
-    print()  # Move to next line after the volume meter
-    return False  # Timed out without detecting a clap
-
 
 # ==============================================================================
 # MAIN LOOP
@@ -305,14 +225,13 @@ def main():
       1. Load the speech model.
       2. Open the microphone.
       3. Listen for "wake up".
-      4. Beep and listen for a clap.
-      5. Open Claude.ai if both detected.
-      6. Cooldown, then repeat.
+      4. Open Claude.ai immediately.
+      5. Cooldown, then repeat.
     """
 
     print()
     print("=" * 60)
-    print("  WAKE CLAUDE — Voice + Clap Activated Launcher")
+    print("  WAKE CLAUDE — Voice Activated Launcher")
     print("=" * 60)
     print()
 
@@ -323,7 +242,7 @@ def main():
     audio_interface = pyaudio.PyAudio()
 
     print()
-    print("Say 'wake up' then clap to open Claude.ai")
+    print("Say 'wake up' to open Claude.ai")
     print("Press Ctrl+C to stop.")
     print()
 
@@ -347,10 +266,10 @@ def main():
             # Create a fresh Vosk recognizer tied to our model and sample rate.
             recognizer = KaldiRecognizer(model, SAMPLE_RATE)
 
-            # Inner loop: listen for wake word, then clap, then open Claude.
+            # Inner loop: listen for wake word, then open Claude.
             while True:
 
-                # --- Phase 1: Listen for "wake up" ---
+                # --- Listen for "wake up" ---
                 print("Listening for 'wake up'...")
                 wake_detected = listen_for_wake_word(stream, recognizer)
 
@@ -359,47 +278,25 @@ def main():
                     print("Microphone disconnected. Reconnecting...")
                     break  # Break to outer loop to reopen the mic
 
-                # Wake word was detected!
+                # Wake word detected — open Claude.ai right away.
                 print()
-                print("Wake word detected! Clap your hands now...")
+                print("Wake word detected! Opening Claude.ai...")
 
-                # Play a short beep to signal the user to clap.
+                # Play a short beep as audio confirmation.
                 # Frequency: 800 Hz, Duration: 200 milliseconds
                 try:
                     winsound.Beep(800, 200)
                 except RuntimeError:
-                    # winsound.Beep can fail on some systems — just skip it.
-                    print("  (Could not play beep sound — continuing anyway)")
+                    pass  # Some systems can't beep — just skip it
 
-                # Reset the recognizer so partial results from the wake word
-                # don't bleed into the next listening session.
-                recognizer = KaldiRecognizer(model, SAMPLE_RATE)
+                webbrowser.open("https://claude.ai")
 
-                # --- Phase 2: Listen for a clap ---
-                clap_result = listen_for_clap(stream)
+                # Cooldown: wait before listening again to prevent double-opens.
+                print(f"Cooldown... back to listening in {COOLDOWN_SECONDS} seconds.")
+                time.sleep(COOLDOWN_SECONDS)
+                print()
 
-                if clap_result is None:
-                    # Mic error during clap detection — reconnect.
-                    print("Microphone disconnected during clap detection. Reconnecting...")
-                    break  # Break to outer loop
-
-                if clap_result:
-                    # Clap detected! Open Claude.ai.
-                    print()
-                    print("Clap detected! Opening Claude.ai...")
-                    webbrowser.open("https://claude.ai")
-
-                    # Cooldown: wait before listening again to prevent double-opens.
-                    print(f"Cooldown... back to listening in {COOLDOWN_SECONDS} seconds.")
-                    time.sleep(COOLDOWN_SECONDS)
-                    print()
-
-                else:
-                    # No clap heard within the time limit.
-                    print("No clap detected within the time limit. Resuming listening...")
-                    print()
-
-                # Reset the recognizer after each activation attempt.
+                # Reset the recognizer so old audio doesn't bleed into next round.
                 recognizer = KaldiRecognizer(model, SAMPLE_RATE)
 
             # Cleanly close the stream before trying to reopen it.
@@ -427,7 +324,5 @@ def main():
 # ENTRY POINT
 # ==============================================================================
 
-# This is the standard Python way to run the main() function when the script
-# is executed directly (as opposed to being imported as a module).
 if __name__ == "__main__":
     main()

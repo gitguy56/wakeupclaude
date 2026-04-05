@@ -1,9 +1,9 @@
 ================================================================================
-WAKE CLAUDE - Voice + Clap Activated Browser Launcher
+WAKE CLAUDE - Voice Activated Browser Launcher
 ================================================================================
 
-Say "wake up" into your microphone, hear a beep, clap once — and Claude.ai
-opens automatically in your browser. That's it!
+Say "wake up" into your microphone and Claude.ai opens automatically in your
+browser. That's it!
 
 --------------------------------------------------------------------------------
 STEP 1 — Install Python
@@ -25,20 +25,15 @@ STEP 1 — Install Python
 STEP 2 — Install Required Libraries
 --------------------------------------------------------------------------------
 
-Open Command Prompt and run these commands ONE AT A TIME:
+Open Command Prompt and run:
 
-    pip install vosk
-    pip install numpy
+    py -m pip install vosk pyaudio
 
-For PyAudio, try this first:
-    pip install pyaudio
+>>> If pyaudio gives an error (common on Windows), use pipwin instead:
 
->>> If that gives an error (common on Windows), use pipwin instead:
-
-    pip install pipwin
+    py -m pip install pipwin
     pipwin install pyaudio
 
-That's all three libraries installed: vosk, numpy, pyaudio.
 (winsound is built into Python on Windows — no install needed.)
 
 --------------------------------------------------------------------------------
@@ -95,11 +90,8 @@ STEP 5 — Using the Script
 
 1. Make sure the script is running and shows "Listening for 'wake up'..."
 2. Speak clearly into your microphone: "wake up"
-3. You'll hear a short BEEP — this means the wake word was detected!
-4. Within 5 seconds, CLAP YOUR HANDS once, sharply.
-   (The volume meter on screen shows your clap level.)
-5. You'll see "Clap detected! Opening Claude.ai..." and your browser opens.
-6. There's a 5-second cooldown, then it goes back to listening.
+3. You'll hear a beep and Claude.ai opens immediately in your browser!
+4. There's a 5-second cooldown, then it goes back to listening.
 
 To stop the script: press Ctrl+C in the Command Prompt window.
 
@@ -126,17 +118,6 @@ SOLUTION:
   - Try speaking a bit louder or closer to the mic.
   - Reduce background noise (TV, music, fans).
 
-PROBLEM: Clap not detected — volume bar stays low
-SOLUTION:
-  - Clap sharply once, close to the microphone.
-  - Try LOWERING the CLAP_THRESHOLD value in wake_claude.py.
-    Open the file, find this line near the top:
-        CLAP_THRESHOLD = 3000
-    Change it to 1500 or 1000 and save, then try again.
-
-PROBLEM: False clap triggers (background noise sets it off)
-SOLUTION:
-  - Raise CLAP_THRESHOLD in wake_claude.py (e.g. change 3000 to 5000 or 8000).
 
 PROBLEM: PyAudio fails to install
 SOLUTION:
@@ -153,14 +134,12 @@ SOLUTION:
         py wake_claude.py
 
 --------------------------------------------------------------------------------
-ADJUSTING SENSITIVITY
+ADJUSTING SETTINGS
 --------------------------------------------------------------------------------
 
 Open wake_claude.py in any text editor (Notepad works fine) and look for the
 CONFIGURATION section near the top. You can change:
 
-    CLAP_THRESHOLD = 3000     --> Lower = more sensitive, Higher = less sensitive
-    CLAP_LISTEN_SECONDS = 5   --> How long to wait for a clap after "wake up"
     COOLDOWN_SECONDS = 5      --> How long to pause after opening Claude
 
 Save the file and re-run the script for changes to take effect.
