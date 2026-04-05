@@ -367,4 +367,24 @@ def main():
 # ==============================================================================
 
 if __name__ == "__main__":
-    main()
+    # Outer restart loop — if the script crashes for any unexpected reason,
+    # it waits 5 seconds and starts itself again automatically.
+    # The only way to fully stop it is Ctrl+C (which raises KeyboardInterrupt
+    # and breaks out of this loop) or closing the window.
+    while True:
+        try:
+            main()
+            # main() only returns normally if the user pressed Ctrl+C,
+            # in which case we want to exit, not restart.
+            break
+        except KeyboardInterrupt:
+            # User pressed Ctrl+C — exit cleanly.
+            print()
+            print("Stopped by user. Goodbye!")
+            break
+        except Exception as e:
+            # Something unexpected crashed the script — print the error and restart.
+            print()
+            print(f"Unexpected error: {e}")
+            print("Restarting in 5 seconds...")
+            time.sleep(5)
