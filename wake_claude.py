@@ -84,11 +84,53 @@ import os
 import sys
 import time
 import json
-import webbrowser
+import subprocess
 
 import pyaudio
 import winsound
 from vosk import Model, KaldiRecognizer
+
+# ==============================================================================
+# FIREFOX LAUNCHER
+# ==============================================================================
+
+# Common places Firefox gets installed on Windows.
+# If yours is somewhere else, add the path to this list.
+FIREFOX_PATHS = [
+    r"C:\Program Files\Mozilla Firefox\firefox.exe",
+    r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
+    os.path.expandvars(r"%LOCALAPPDATA%\Mozilla Firefox\firefox.exe"),
+    os.path.expandvars(r"%PROGRAMFILES%\Mozilla Firefox\firefox.exe"),
+    os.path.expandvars(r"%PROGRAMFILES(X86)%\Mozilla Firefox\firefox.exe"),
+]
+
+def find_firefox():
+    """
+    Search common install locations for firefox.exe.
+    Returns the full path if found, or None if Firefox isn't installed.
+    """
+    for path in FIREFOX_PATHS:
+        if os.path.isfile(path):
+            return path
+    return None
+
+def open_url(url):
+    """
+    Open the given URL in Firefox. Works whether Firefox is already open or not.
+    If Firefox can't be found, falls back to the system default browser.
+    """
+    firefox = find_firefox()
+    if firefox:
+        # Launch Firefox with the URL directly. subprocess.Popen starts it in
+        # the background so this script doesn't wait for the browser to close.
+        subprocess.Popen([firefox, url])
+    else:
+        # Firefox not found — warn the user and use the default browser instead.
+        print("  Warning: Firefox not found. Opening in default browser.")
+        print("  If Firefox is installed in a non-standard location, add its")
+        print("  path to the FIREFOX_PATHS list near the top of this script.")
+        import webbrowser
+        webbrowser.open(url)
 
 # ==============================================================================
 # CONFIGURATION
@@ -289,7 +331,7 @@ def main():
                 except RuntimeError:
                     pass  # Some systems can't beep — just skip it
 
-                webbrowser.open("https://claude.ai")
+                open_url("https://claude.ai")
 
                 # Cooldown: wait before listening again to prevent double-opens.
                 print(f"Cooldown... back to listening in {COOLDOWN_SECONDS} seconds.")
